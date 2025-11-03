@@ -1,68 +1,143 @@
->> Полная структура каталогов:
-```
-    /opt
-    	├── .env
-        ├── caddy
-        │	 ├── Caddyfile
-        │	 └── docker-compose.yml
-        ├── element
-        │	 ├── config.json
-        │	 └── docker-compose.yml
-        ├── .env
-        ├── jitsi
-        │	 └── docker-compose.yml
-        ├── postgres
-        │	 ├── data
-        │	 ├── docker-compose.yml
-        │	 └── initdb
-        │	     └── 01-init-synapse.sql
-        ├── README.md
-        ├── .scripts
-        │	 ├── check-element.sh
-        │	 ├── create-user.sh
-        │	 └── initdb.sh
-        └── synapse
-            ├── data
-            │	 ├── homeserver.yaml
-            │	 └── matrix.laziza.ru.signing.key
-            └── docker-compose.yml
-```
+# Проект: Корпоративный мессенджер на базе Matrix + Element + Jitsi
 
->> Команды запуска/остановки/обновления:
-    Для запуска необходимо зайти в директорию, соответсвующую сервису,
-    например:
-    ```cd /opt/element```
-    и выполнить:
-    ```docker compose up -d```
+## Цель проекта
 
->> Где лежат логи:  
+Развернуть корпоративный мессенджер на базе **Matrix** с веб-клиентом **Element** и групповыми звонками через **Jitsi**.
+Все сервисы будут работать на одном выделенном сервере в **Docker**.
 
->> Как добавить администратора Matrix  
+* Реверс-прокси и авто-TLS: **Caddy**
+* **TURN-сервер** в рамках данного ТЗ не требуется
 
->> Как включать/выключать открытую регистрацию  
+---
 
->> Как обновлять контейнеры.  
+## Текущие вводные
 
->> Список открытых портов и примененных правил UFW/облака  
-```
-Status: active
-Logging: on (low)
-Default: deny (incoming), allow (outgoing), deny (routed)
-New profiles: skip
+**Домены:**
 
-To                         Action      From
---                         ------      ----
-80/tcp                     ALLOW IN    Anywhere                  
-443/tcp                    ALLOW IN    Anywhere                  
-8448/tcp                   ALLOW IN    Anywhere                  
-10000/udp                  ALLOW IN    Anywhere                  
-22/tcp                     ALLOW IN    Anywhere   
-```
+| Домен            | Назначение                                 |
+| ---------------- | ------------------------------------------ |
+| chat.laziza.ru   | Element Web                                |
+| matrix.laziza.ru | Synapse (client API; федерация по желанию) |
+| meet.laziza.ru   | Jitsi Meet                                 |
 
->> Данные доступа админ-пользователя Matrix (логин, способ смены пароля)  
+**Сервер:**
 
->> Инструкция по бэкапу: что и чем резервировать (PostgreSQL, ключи Synapse, при необходимости медиа-хранилище)  
+* Ubuntu 22.04 LTS, чистая установка
+* Доступ по SSH (root или sudoer)
 
+**Необходимые открытые порты:**
 
+| Порт  | Протокол | Назначение                     |
+| ----- | -------- | ------------------------------ |
+| 80    | TCP      | HTTP для Caddy                 |
+| 443   | TCP      | HTTPS для Caddy                |
+| 8448  | TCP      | Matrix Federation (по желанию) |
+| 10000 | UDP      | Jitsi Videobridge              |
 
+---
 
+## Объем работ
+
+### 1. Базовая инфраструктура
+
+* Установка **Docker** и **Docker Compose (plugin)**
+* Настройка **UFW/фаервола** под необходимые порты
+* Создание общей **docker-сети** для стека
+
+### 2. Caddy (reverse proxy, авто-TLS Let’s Encrypt)
+
+* Настройка Caddy для трёх хостов:
+
+  * `chat.laziza.ru → element:80`
+  * `matrix.laziza.ru → synapse:8008` (только пути `/_matrix` и `/_synapse`)
+  * `:8448 → synapse:8008` (федерация, если включаем)
+  * `meet.laziza.ru → jitsi-web:80`
+* Конфигурация и состояние: `/opt/caddy`
+* Проверка автоматического выпуска сертификатов
+
+### 3. PostgreSQL для Synapse
+
+* Развертывание **postgres:15** в Docker в `/opt/postgres`
+* Задание безопасного пароля
+* Настройка **healthcheck** и автоперезапуска
+
+### 4. Synapse (Matrix)
+
+* Генерация конфигурации с именем сервера `matrix.laziza.ru`
+* Подключение к PostgreSQL
+* Настройка `public_baseurl = https://matrix.laziza.ru/`
+* Слушатель HTTP:8008 внутри контейнера (TLS на Caddy)
+* Временная регистрация для создания администратора, затем отключение
+* Конфиги и ключи: `/opt/synapse/data`
+
+### 5. Element Web
+
+* Развертывание `vectorim/element-web` в `/opt/element`
+* Конфиг `config.json`:
+
+  * `https://matrix.laziza.ru`
+  * `preferredDomain` для Jitsi: `meet.laziza.ru`
+* Проверка входа через браузер: `https://chat.laziza.ru`
+
+### 6. Jitsi Meet (без TURN)
+
+* Развертывание официального `docker-jitsi-meet` в `/opt/jitsi`
+* Настройка `.env`:
+
+  ```text
+  PUBLIC_URL=https://meet.laziza.ru
+  NETWORK=appnet
+  DOCKER_HOST_ADDRESS=<публичный IP>
+  ENABLE_P2P=false
+  JVB_PORT=10000
+  ```
+* Контейнер `web` → `jitsi-web`, слушает только внутри docker-сети; 80/443 наружу не публикуем (TLS на Caddy)
+* Публикация наружу только UDP 10000 для JVB
+* Проверка доступности: `https://meet.laziza.ru` и тестовый звонок на 3–5 участников
+
+---
+
+## Артефакты проекта
+
+* Полная структура каталогов:
+
+  ```
+  /opt/caddy
+  /opt/postgres
+  /opt/synapse
+  /opt/element
+  /opt/jitsi
+  ```
+* Все файлы конфигурации: `docker-compose.yml`, `.env`, `Caddyfile`, конфиги приложений
+* **Readme для заказчика**:
+
+  * Команды запуска/остановки/обновления
+  * Локация логов
+  * Добавление администратора Matrix
+  * Включение/отключение открытой регистрации
+  * Обновление контейнеров
+* Список открытых портов и применённых правил UFW/облака
+* Данные доступа админа Matrix (логин, смена пароля)
+* Инструкция по бэкапу: PostgreSQL, ключи Synapse, медиа-хранилище при необходимости
+
+---
+
+## Критерии приемки
+
+* **HTTPS проверки:**
+
+  * `https://matrix.laziza.ru/_matrix/client/versions` возвращает JSON с версиями
+  * `https://chat.laziza.ru` открывается, вход в Element возможен админом, отправка/приём сообщений работает
+* **Jitsi:**
+
+  * В комнате Element запускается звонок, Jitsi на `meet.laziza.ru`, 3–5 участников видят и слышат друг друга
+  * UDP 10000 доступен из интернета
+* Регистрация в Synapse по умолчанию выключена после создания админа
+* Все контейнеры перезапускаются командой `docker compose up -d`
+* Автопродление сертификатов Let’s Encrypt включено и валидно
+
+---
+
+Если хочешь, я могу сделать ещё **визуально более «презентабельный» вариант с цветами и блоками**, который сразу удобно использовать в документации для команды или заказчика.
+
+Хочешь, чтобы я так сделал?
