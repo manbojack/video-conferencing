@@ -1,0 +1,64 @@
+services:
+  web:
+    image: jitsi/web:unstable
+    container_name: jitsi-web
+    env_file: 
+      - ../.env
+    restart: unless-stopped
+    expose:
+      - "80"
+      - "443"
+    depends_on:
+      - jvb
+    networks:
+        appnet:
+
+
+  prosody:
+    image: jitsi/prosody:unstable
+    container_name: jitsi-prosody
+    env_file: 
+      - ../.env
+    restart: unless-stopped
+    expose:
+      - '5222'
+      - '5280'
+      - '8448'
+      - '5269'
+      - '5347'
+      - '5280'
+    networks:
+        appnet:
+            aliases:
+                - xmpp.meet.jitsi
+
+
+  jicofo:
+    image: jitsi/jicofo:unstable
+    container_name: jitsi-jicofo
+    env_file: 
+      - ../.env
+    depends_on:
+        - prosody
+    restart: unless-stopped
+    networks:
+        appnet:
+
+
+  jvb:
+    image: jitsi/jvb:unstable
+    container_name: jitsi-jvb
+    env_file: 
+      - ../.env
+    ports:
+      - "10000:10000/udp"
+    restart: unless-stopped
+    depends_on:
+      - prosody
+    networks:
+        appnet:
+
+
+networks:
+  appnet:
+    external: true

@@ -1,0 +1,16 @@
+services:
+  synapse-admin:
+    container_name: synapse-admin
+    hostname: synapse-admin
+    image: awesometechnologies/synapse-admin:latest
+    env_file:
+      - ../.env
+    expose:
+      - "80"
+    restart: unless-stopped
+    networks:
+      appnet:
+
+networks:
+  appnet:
+    external: true

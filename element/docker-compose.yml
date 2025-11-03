@@ -1,0 +1,17 @@
+services:
+  element:
+    image: vectorim/element-web:v1.11.110-rc.0
+    container_name: element
+    env_file:
+      - ../.env
+    volumes:
+      - ./config.chat.laziza.ru.json:/app/element/config.chat.laziza.ru.json:ro
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      appnet:
+
+networks:
+  appnet:
+    external: true

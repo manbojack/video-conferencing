@@ -1,0 +1,58 @@
+# ./caddy/Caddyfile
+
+# Jitsi Meet
+meet.laziza.ru {
+    encode zstd gzip
+
+    reverse_proxy jitsi-web:80 {
+        header_up Host {host}
+    }
+
+    header {
+        Content-Security-Policy "
+            default-src 'self' https://chat.laziza.ru https://meet.laziza.ru;
+            script-src 'self' 'unsafe-inline' 'unsafe-eval' https://meet.laziza.ru;
+            style-src 'self' 'unsafe-inline' https://meet.laziza.ru;
+            img-src * data: blob:;
+            font-src 'self' https://meet.laziza.ru;
+            connect-src 'self' https://matrix.laziza.ru https://meet.laziza.ru wss://meet.laziza.ru;
+            frame-src https://meet.laziza.ru;
+            media-src * blob:;
+        "
+        Referrer-Policy "no-referrer"
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Authorization,Content-Type"
+    }
+
+    @options {
+        method OPTIONS
+    }
+    respond @options 204
+}
+
+# Synapse API
+matrix.laziza.ru {
+    reverse_proxy synapse:8008 {
+        header_up Host {host}
+    }
+}
+
+chat.laziza.ru {
+    handle /config.chat.laziza.ru.json {
+        root * /etc/caddy
+        file_server
+    }
+
+    reverse_proxy element:80 {
+        header_up Host {host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# Synapse Admin
+admin.laziza.ru {
+    reverse_proxy synapse-admin:80 {
+        header_up Host {host}
+    }
+}

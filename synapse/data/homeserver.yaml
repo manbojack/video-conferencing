@@ -1,0 +1,64 @@
+server_name: "matrix.laziza.ru"
+public_baseurl: "https://matrix.laziza.ru/"
+report_stats: false
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    resources:
+      - names: [client, federation]
+        compress: false
+
+database:
+  name: psycopg2
+  args:
+    user: synapse
+    password: "Fdhsfq35sahjfa"
+    database: synapse
+    host: postgres
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+registration:
+  enabled: true
+registration_shared_secret: "SuperSecretKey123"
+enable_registration_without_verification: false
+enable_3pid_changes: false
+
+push:
+  include:
+    - url: "https://matrix.laziza.ru/_matrix/push/v1/notify"
+
+media_store_path: "/data/media_store"
+
+experimental_features:
+  m.call.invites_in_public_rooms: true
+  m.call.voip: true
+
+turn_uris:
+  - "turn:matrix.laziza.ru:3478?transport=udp"
+  - "turn:matrix.laziza.ru:3478?transport=tcp"
+turn_shared_secret: "SuperTurnPass123"
+turn_user_lifetime: 86400000
+
+# 📞 Jitsi — исправлено
+jitsi:
+  preferred_domain: meet.laziza.ru   # Изменено: добавлено, чтобы звонки шли через Jitsi
+
+modules: []
+
+logging:
+  version: 1
+  formatters:
+    precise:
+      format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  handlers:
+    console:
+      class: logging.StreamHandler
+      formatter: precise
+  root:
+    level: INFO
+    handlers: [console]

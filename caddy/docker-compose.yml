@@ -1,0 +1,24 @@
+# ./caddy/docker-compose.yml
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config.chat.laziza.ru.json:/etc/caddy/config.chat.laziza.ru.json:ro
+    networks:
+      appnet:
+
+networks:
+  appnet:
+    external: true
+
+volumes:
+  caddy_data:
+  caddy_config:

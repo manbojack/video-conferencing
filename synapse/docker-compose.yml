@@ -1,0 +1,19 @@
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    container_name: synapse
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    expose:
+      - "8008-8009"  # диапазон портов для внутренней сети
+    ports:
+      - "8448:8448"  # federation HTTPS
+    networks:
+      appnet:
+
+networks:
+  appnet:
+    external: true

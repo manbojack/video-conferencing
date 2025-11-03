@@ -1,0 +1,26 @@
+# -----------------------
+# Логи всех сервисов
+# -----------------------
+*.log
+*.log.*
+
+# -----------------------
+# PostgreSQL
+# -----------------------
+postgres/data/
+*.dump
+
+# -----------------------
+# Synapse (Matrix)
+# -----------------------
+/opt/synapse/data/homeserver.db
+/opt/synapse/data/media_store/
+*.log
+
+# -----------------------
+# Jitsi
+# -----------------------
+jitsi/logs/
+jitsi/docker-jitsi-meet/
+
+element/element-web/
